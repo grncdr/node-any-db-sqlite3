@@ -63,7 +63,7 @@ SQLite3Connection.prototype.query = function (text, values, callback) {
   
   this.emit('query', query)
 
-  if (query.text.match(/^\s*insert\s+/i))
+  if (query.text.match(/^\s*insert|update|delete\s+/i))
     this._db.run(query.text,
                  query.values,
                  onComplete)
@@ -76,7 +76,7 @@ SQLite3Connection.prototype.query = function (text, values, callback) {
   return query
 
   function onComplete(err, count) {
-    query.complete(err, count, this.lastID)
+    query.complete(err, count, this.lastID, this.changes);
   }
 }
 
@@ -124,7 +124,7 @@ SQLite3Query.prototype.onRow = function (err, row) {
   this.push(row)
 }
 
-SQLite3Query.prototype.complete = function (err, count, lastId) {
+SQLite3Query.prototype.complete = function (err, count, lastId, affectedRows) {
   this.push(null)
   if (this._errored) return // we've emitted an error from the row callback
   if (!err && !this._gotData) this.emit('fields', [])
@@ -132,6 +132,11 @@ SQLite3Query.prototype.complete = function (err, count, lastId) {
   if (err) return this.emit('error', err)
   this._result.rowCount = count
   this._result.lastInsertId = lastId
+  if(affectedRows) {
+    this._result.affectedRows = affectedRows
+    this._result.changedRows = affectedRows
+  }
+
   if (this.callback) {
     this.callback(null, this._result)
   }
