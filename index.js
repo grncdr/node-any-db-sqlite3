@@ -64,10 +64,16 @@ SQLite3Connection.prototype.query = function (text, values, callback) {
   
   this.emit('query', query)
 
-  if (query.text.match(/^\s*(insert|update)\s+/i)) {
+  if (query.text.match(/^\s*(insert|update|replace)\s+/i)) {
     this._db.run(query.text,
                  query.values,
-                 function (err) { query.complete(err, this.changes, this.lastID) })
+                 function (err) { 
+					query.complete(
+						err, 
+						(this ? this.changes : 0), 
+						(this ? this.lastID : -1)
+					);
+				 });
   } else {
     this._db.each(query.text,
                   query.values,
@@ -111,6 +117,7 @@ SQLite3Query.prototype.onRow = function (err, row) {
     this._errored = true
     this.emit('close')
     this.emit('error', err)
+	return;
   }
   if (!this._result.fields) {
     this._result.fields = Object.keys(row).map(function (name) {
